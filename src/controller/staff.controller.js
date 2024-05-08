@@ -1,14 +1,14 @@
-import { asyncHandler } from "../utils/asyncHandler.js";
-import { Department } from "../model/department.model.js";
-import { Teacher } from "../model/teacher.model.js";
-import { Student } from "../model/student.model.js";
-import { ExamResult } from "../model/examResult.model.js";
+import { asyncHandler  } from "../utils/asyncHandler.js";
+import { Staff } from "../model/staff.model.js"
+import { uploadOnCloud } from "../utils/cloudinary.js"
+import { ExamDetail } from "../model/examDetails.model.js";
+import { Student } from "../model/student.model.js"
 
 
-const createTeacher = asyncHandler(async (req, res) => {
-    const { name, email, password, dept_name, branch } = req.body;
+const createStaff = asyncHandler(async (req, res) => {
+    const { name, email, password } = req.body;
 
-    if(name == "" || email == "" || password == "" || dept_name == "" || branch == ""){
+    if(name == "" || email == "" || password == ""){
         return res.status(400)
             .json({
                 "success": false,
@@ -16,11 +16,8 @@ const createTeacher = asyncHandler(async (req, res) => {
             })
     }
 
-    let ifBranch = branch == "" ? undefined : branch;
-
-    const dept = await Department.findOne({ name: dept_name, branch : ifBranch });
-    const createdTeacher = await Teacher.create({
-        name, email, dept_id: dept._id, password
+    const createdTeacher = await Staff.create({
+        name, email, password
     })
 
     if(!createdTeacher){
@@ -39,7 +36,7 @@ const createTeacher = asyncHandler(async (req, res) => {
             })
 })
 
-const loginTeacher = asyncHandler(async (req, res) => {
+const loginStaff = asyncHandler(async (req, res) => {
     const token = req.cookies?.accessToken || req.header("Authorization")?.replace("Bearer ", "");
     if(token){
         return res.status(400)
@@ -52,7 +49,7 @@ const loginTeacher = asyncHandler(async (req, res) => {
 
     const { email, password } = req.body;
 
-    const user = await Teacher.findOne({ email });
+    const user = await Staff.findOne({ email });
     if(!user){
         return res.status(400)
             .json({
@@ -71,7 +68,7 @@ const loginTeacher = asyncHandler(async (req, res) => {
     }
 
     const accessToken = user.generateAccessToken();
-    const loggedInUser = await Teacher.findById(user._id).select("-password");
+    const loggedInUser = await Staff.findById(user._id).select("-password");
     const options = {
         httpOnly: true,
         secure: true
@@ -83,11 +80,11 @@ const loginTeacher = asyncHandler(async (req, res) => {
                 "success": true,
                 accessToken,
                 "data": loggedInUser,
-                "message":"teacher logged in successfully"
+                "message":"staff logged in successfully"
             })
 })
 
-const logoutTeacher = asyncHandler(async (req, res) => {
+const logoutStaff = asyncHandler(async (req, res) => {
 
     const options = {
         httpOnly: true,
@@ -102,19 +99,18 @@ const logoutTeacher = asyncHandler(async (req, res) => {
             })
 })
 
-const createResult = asyncHandler(async (req, res) => {
+const createExamDetails = asyncHandler(async (req, res) => {
+    const { date, roll_no } = req.body;
 
-    if(req.user.user_type !== "teacher"){
+    if(date == "" || roll_no == "" || !req.file){
         return res.status(400)
             .json({
                 "success": false,
-                "message":"Only a teacher can generate result"
+                "message":"All fields are required"
             })
     }
 
-    const { roll_no, marks } = req.body;
-
-    const student = await Student.findOne({ roll_no });
+    const student = await Student.findOne({ roll_no })
     if(!student){
         return res.status(400)
             .json({
@@ -123,31 +119,42 @@ const createResult = asyncHandler(async (req, res) => {
             })
     }
 
-    const result = await ExamResult.create({
-        teacher_id: req.user._id,
+    const detail = await ExamDetail.findOne({ roll_no })
+    if(detail){
+        return res.status(400)
+            .json({
+                "success": false,
+                "message":"Exam details with this student already exists"
+            })
+    }
+
+    const path = req.file.path;
+    const admit = await uploadOnCloud(path);
+
+    const examDetails = await ExamDetail.create({
+        exam_date: new Date(date),
         roll_no,
-        dept_id: req.user.dept_id,
-        marks,
-        is_qualified: marks >= 50
+        admit: admit?.url || null
     })
-    if(!result){
+
+    if(!examDetails){
         return res.status(500)
             .json({
                 "success": false,
-                "message":"something went wrong"
+                "message":"Something went wrong while creating exam details"
             })
     }
 
     return res.status(200)
             .json({
                 "success": true,
-                "message":"result generated successfully"
+                examDetails
             })
 })
 
 export {
-    createTeacher,
-    loginTeacher,
-    logoutTeacher,
-    createResult
+    createStaff,
+    loginStaff,
+    logoutStaff,
+    createExamDetails
 }

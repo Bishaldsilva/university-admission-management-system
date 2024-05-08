@@ -1,4 +1,6 @@
 import mongoose,{ Schema } from "mongoose";
+import bcrypt from "bcrypt"
+import jwt from "jsonwebtoken"
 
 const staffSchema = new Schema({
     name: {

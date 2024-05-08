@@ -17,10 +17,12 @@ app.use(cookieParser())
 import studentRouter from "./routers/student.router.js"
 import departmentRouter from "./routers/department.router.js"
 import teacherRouter from "./routers/teacher.router.js"
+import staffRouter from "./routers/staff.router.js"
 
 app.use("/student", studentRouter);
 app.use("/department", departmentRouter);
 app.use("/teacher", teacherRouter);
+app.use("/staff", staffRouter);
 
 
 

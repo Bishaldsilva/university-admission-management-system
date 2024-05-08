@@ -1,7 +1,7 @@
 import mongoose, { Schema } from "mongoose"
 
 const examDetailsSchema = new Schema({
-    exm_date: {
+    exam_date: {
         type: Date,
         required: true
     },
