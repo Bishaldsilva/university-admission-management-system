@@ -3,6 +3,7 @@ import { Staff } from "../model/staff.model.js"
 import { uploadOnCloud } from "../utils/cloudinary.js"
 import { ExamDetail } from "../model/examDetails.model.js";
 import { Student } from "../model/student.model.js"
+import { Payment } from "../model/payment.model.js";
 
 
 const createStaff = asyncHandler(async (req, res) => {
@@ -100,6 +101,15 @@ const logoutStaff = asyncHandler(async (req, res) => {
 })
 
 const createExamDetails = asyncHandler(async (req, res) => {
+
+    if(req.user.user_type !== "staff"){
+        return res.status(400)
+            .json({
+                "success": false,
+                "message":"Only a staff can create exam details"
+            })
+    }
+
     const { date, roll_no } = req.body;
 
     if(date == "" || roll_no == "" || !req.file){
@@ -152,9 +162,99 @@ const createExamDetails = asyncHandler(async (req, res) => {
             })
 })
 
+const updateStudentRollNo = asyncHandler(async (req, res) => {
+    if(req.user.user_type !== "staff"){
+        return res.status(400)
+            .json({
+                "success": false,
+                "message":"Only a staff can update roll no"
+            })
+    }
+
+    const { id } = req.params;
+    const { roll_no } = req.body;
+
+    if(!roll_no){
+        return res.status(400)
+            .json({
+                "success": false,
+                "message":"Roll no required"
+            })
+    }
+
+    const student = await Student.findById(id);
+    if(!student){
+        return res.status(400)
+            .json({
+                "success": false,
+                "message":"Student not found"
+            })
+    }
+
+    student.roll_no = roll_no;
+    student.save({ validateBeforeSave: false })
+
+    return res.status(200)
+            .json({
+                "success": true,
+                student,
+                "message":"student roll no updated successfully"
+            })
+})
+
+const createPayment = asyncHandler(async (req, res) => {
+    if(req.user.user_type !== "staff"){
+        return res.status(400)
+            .json({
+                "success": false,
+                "message":"Only a staff can update roll no"
+            })
+    }
+
+    const { roll_no, amount, date } = req.body;
+
+    if(!roll_no || !amount || !date){
+        return res.status(400)
+            .json({
+                "success": false,
+                "message":"all fields are required"
+            })
+    }
+
+    const student = await Student.findOne({ roll_no })
+    if(!student){
+        return res.status(400)
+            .json({
+                "success": false,
+                "message":"student with this roll no doesn't exist"
+            })
+    }
+
+    const payment = await Payment.create({
+        roll_no, amount: Number(amount),
+        date: new Date(date)
+    })
+
+    if(!payment){
+        return res.status(500)
+            .json({
+                "success": false,
+                "message":"something went wrong hile creating the payment"
+            })
+    }
+
+    return res.status(200)
+            .json({
+                "success": true,
+                payment
+            })
+})
+
 export {
     createStaff,
     loginStaff,
     logoutStaff,
-    createExamDetails
+    createExamDetails,
+    updateStudentRollNo,
+    createPayment
 }
